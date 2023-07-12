@@ -22,7 +22,7 @@ smart_open allows reading and writing gzip and bzip2 files. They are transparent
 
 ### Configuration
 
-The Meltano configuration for this tap must contain the key 'tables' which holds an array of json objects describing each set of targeted source files.
+The Meltano configuration for this tap must contain the key 'tables' which holds an array of json objects describing each set of targeted source files. You can find example Meltano config in this repo.
 ```
 config:
   extractors:
@@ -35,8 +35,17 @@ config:
     - discover
     - state
     config:
+      s3_stage_bucket: "my-stage-bucket"
+      s3_arn_role: "my-role-arn"
       tables: []
 ``` 
+
+To run using Meltano:
+
+```bash
+$ meltano install # install plugin(s)
+$ meltano run tap-spreadsheets-anywhere target-jsonl
+```
 
 To run this tap directly from the CLI, a config.json file must be supplied which holds the 'tables' array.
 A sample config file is available here [sample_config.json](sample_config.json) and a description of the required/optional fields declared within it follow.
@@ -44,6 +53,8 @@ The configuration is also captured in [tables_config_util.py](tap_spreadsheets_a
 
 ```
 {
+    "s3_stage_bucket": "my-stage-bucket",
+    "s3_arn_role": "my-role-arn"
     "tables": [
         {
             "path": "s3://my-s3-bucket",
@@ -89,8 +100,12 @@ The configuration is also captured in [tables_config_util.py](tap_spreadsheets_a
         }
     ]
 }
-
 ```
+
+Global config:
+- **s3_stage_bucket**: an S3 bucket to where selected files will be copied in case **batch** is true.
+- **s3_arn_role**: a role that will be assumed by a S3 client while copying files.
+
 Each object in the 'tables' array describes one or more CSV or Excel spreadsheet files that adhere to the same schema and are meant to be tapped as the source for a Singer-based data flow.  
 - **path**: A string describing the transport and bucket/root directory holding the targeted source files.
 - **name**: A string describing the "table" (aka Singer stream) into which the source data should be loaded.
@@ -115,6 +130,7 @@ Each object in the 'tables' array describes one or more CSV or Excel spreadsheet
 - **delimiter**: (optional) the delimiter to use when format is 'csv'. Defaults to a comma ',' but you can set delimiter to 'detect' to leverage the csv "Sniffer" for auto-detecting delimiter. 
 - **quotechar**: (optional) the character used to surround values that may contain delimiters - defaults to a double quote '"'
 - **json_path**: (optional) the JSON key under which the list of objets to use is located. Defaults to None, corresponding to an array at the top level of the JSON tree.
+- **batch**: (optional) if true, the tap will copy files according to the pattern (only S3 protocol is supported) to **s3_stage_bucket** using **s3_arn_role** and output [BATCH type messages](https://sdk.meltano.com/en/latest/batch.html) pointing to a **s3_stage_bucket**. 
 
 ### Automatic Config Generation
 

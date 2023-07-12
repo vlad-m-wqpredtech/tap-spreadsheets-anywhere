@@ -1,0 +1,31 @@
+version: 1
+send_anonymous_usage_stats: true
+project_id: "tap-spreadsheets-anywhere"
+default_environment: test
+environments:
+- name: test
+plugins:
+  extractors:
+  - name: tap-spreadsheets-anywhere
+    namespace: tap_spreadsheets_anywhere
+    pip_url: -e .
+    executable: tap-spreadsheets-anywhere
+    capabilities:
+    - catalog
+    - discover
+    - state
+    config:
+      s3_stage_bucket: "stage-test-tmp"
+      s3_arn_role: "arn:aws:iam::123:role/s3-meltano-test-role"
+      tables:
+      - path: "s3://input-test-tmp"
+        name: "dummy"
+        pattern: "dummy/random.csv"
+        start_date: "2017-05-01T00:00:00Z"
+        key_properties: []
+        format: "csv"
+        batch: true
+  loaders:
+  - name: target-jsonl
+    variant: andyh1203
+    pip_url: target-jsonl

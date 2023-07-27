@@ -66,7 +66,7 @@ def discover(config):
     for table_spec in config['tables']:
         try:
             modified_since = dateutil.parser.parse(table_spec['start_date'])
-            target_files = file_utils.get_matching_objects(table_spec, modified_since)
+            target_files = file_utils.get_matching_objects(table_spec, modified_since, config)
             sample_rate = table_spec.get('sample_rate',5)
             max_sampling_read = table_spec.get('max_sampling_read', 1000)
             max_sampled_files = table_spec.get('max_sampled_files', 50)
@@ -114,7 +114,7 @@ def sync(config, state, catalog):
             )
             modified_since = dateutil.parser.parse(
                 state.get(stream.tap_stream_id, {}).get('modified_since') or table_spec['start_date'])
-            target_files = file_utils.get_matching_objects(table_spec, modified_since)
+            target_files = file_utils.get_matching_objects(table_spec, modified_since, config)
             max_records_per_run = table_spec.get('max_records_per_run', -1)
             records_streamed = 0
 

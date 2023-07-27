@@ -121,12 +121,15 @@ def parse_path(path):
     return ('local', path_parts[0]) if len(path_parts) <= 1 else (path_parts[0], path_parts[1])
 
 
-def get_matching_objects(table_spec, modified_since=None):
+def get_matching_objects(table_spec, modified_since=None, config=None):
     protocol, bucket = parse_path(table_spec['path'])
 
     # TODO Breakout the transport schemes here similar to the registry/loading pattern used by smart_open
     if protocol == 's3':
-        target_objects = list_files_in_s3_bucket(bucket, table_spec.get('search_prefix'))
+        s3_arn_role = None
+        if config:
+            s3_arn_role = config.get('s3_arn_role')
+        target_objects = list_files_in_s3_bucket(bucket, table_spec.get('search_prefix'), s3_arn_role)
     elif protocol == 'file':
         target_objects = list_files_in_local_bucket(bucket, table_spec.get('search_prefix'))
     elif protocol in ["sftp"]:
@@ -289,8 +292,20 @@ def list_files_in_azure_bucket(container_name, search_prefix=None):
 
 
 
-def list_files_in_s3_bucket(bucket, search_prefix=None):
-    s3_client = boto3.client('s3')
+def list_files_in_s3_bucket(bucket, search_prefix=None, s3_arn_role=None):
+    if s3_arn_role:
+        client = boto3.client('sts')
+        credentials = client.assume_role(RoleArn=s3_arn_role,
+                                         RoleSessionName='SourceToStageELT')['Credentials']
+
+        s3_client = boto3.resource(
+            's3',
+            aws_access_key_id=credentials['AccessKeyId'],
+            aws_secret_access_key=credentials['SecretAccessKey'],
+            aws_session_token=credentials['SessionToken']
+        ).meta.client
+    else:
+        s3_client = boto3.client('s3')
     s3_objects = []
 
     max_results = 1000

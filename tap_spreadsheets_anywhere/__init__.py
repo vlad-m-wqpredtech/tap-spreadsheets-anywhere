@@ -3,6 +3,9 @@ import os
 import logging
 
 import dateutil
+from typing import Dict
+
+import boto3
 import singer
 from singer import utils
 from singer.catalog import Catalog, CatalogEntry
@@ -61,8 +64,23 @@ def generate_schema(table_spec, samples):
     merged_schema = override_schema_with_config(inferred_schema, table_spec)
     return Schema.from_dict(merged_schema)
 
+def _globally_assume_role_boto3(config: Dict):
+    s3_arn_role = config.get('s3_arn_role')
+    if s3_arn_role:
+        client = boto3.client('sts')
+        credentials = client.assume_role(RoleArn=s3_arn_role,
+                                         RoleSessionName='SourceToStageELT')['Credentials']
+        boto3.setup_default_session(
+            aws_access_key_id=credentials['AccessKeyId'],
+            aws_secret_access_key=credentials['SecretAccessKey'],
+            aws_session_token=credentials['SessionToken'],
+        )
+
 def discover(config):
     streams = []
+
+    _globally_assume_role_boto3(config)
+    
     for table_spec in config['tables']:
         try:
             modified_since = dateutil.parser.parse(table_spec['start_date'])
@@ -100,6 +118,9 @@ def discover(config):
 def sync(config, state, catalog):
     # Loop over selected streams in catalog
     LOGGER.info(f"Processing {len(list(catalog.get_selected_streams(state)))} selected streams from Catalog")
+
+    _globally_assume_role_boto3(config)
+    
     for stream in catalog.get_selected_streams(state):
         LOGGER.info("Syncing stream:" + stream.tap_stream_id)
         catalog_schema = stream.schema.to_dict()

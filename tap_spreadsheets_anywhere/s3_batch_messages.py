@@ -78,21 +78,7 @@ def _copy_file(s3, src_bucket: str, dest_bucket: str, key: str, new_key: str, mu
 
 def copy_files_to_stage(config: Dict, target_files: List[Dict], source_bucket: str, destination_bucket: str) -> List[Dict]:
     LOGGER.info(f'Copying {len(target_files)} files from {source_bucket} to {destination_bucket} stage bucket...')
-    
-    s3_arn_role = config.get('s3_arn_role')
-    if s3_arn_role:
-        client = boto3.client('sts')
-        credentials = client.assume_role(RoleArn=s3_arn_role,
-                                         RoleSessionName='SourceToStageELT')['Credentials']
-
-        s3_client = boto3.resource(
-            's3',
-            aws_access_key_id=credentials['AccessKeyId'],
-            aws_secret_access_key=credentials['SecretAccessKey'],
-            aws_session_token=credentials['SessionToken']
-        ).meta.client
-    else:
-        s3_client = boto3.client('s3')
+    s3_client = boto3.client('s3')
     
     copied_files = []
     for tfile in target_files:
